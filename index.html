@@ -646,48 +646,34 @@
 
     function isOneTimeKey(k) { return /^onetime\s/i.test(k); }
 
- <script>
-  async function goToCheckout(priceId, service, optionsKey) {
-    try {
-      const user = auth.currentUser;
-      if (!user) { alert('Please sign in to continue'); return; }
-      const token = await user.getIdToken();
-      const s = await initStripe();
-
-      console.log('Checkout debug:', { service, optionsKey, priceId });
-
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          priceId,
-          service,
-          optionsKey,
-          mode: isOneTimeKey(optionsKey) ? 'payment' : 'subscription'
-        })
-      });
-
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        // Show the real server error (Stripe or Firebase)
-        throw new Error(payload?.error || `Server error (${response.status})`);
+    async function goToCheckout(priceId, service, optionsKey) {
+      try {
+        const user = auth.currentUser;
+        if (!user) { alert('Please sign in to continue'); return; }
+        const token = await user.getIdToken();
+        const s = await initStripe();
+        const response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            priceId,
+            service,
+            optionsKey,
+            mode: isOneTimeKey(optionsKey) ? 'payment' : 'subscription'
+          })
+        });
+        const session = await response.json();
+        if (!session?.id) throw new Error('Missing session id');
+        console.log('Redirecting to Stripe Checkout with session', session.id, 'mode', session.mode);
+        await s.redirectToCheckout({ sessionId: session.id });
+      } catch (error) {
+        console.error('Checkout error:', error);
+        alert('Checkout failed. Please try again.');
       }
-
-      if (!payload?.id) {
-        throw new Error('Server did not return a session id');
-      }
-
-      await s.redirectToCheckout({ sessionId: payload.id });
-    } catch (error) {
-      console.error('Checkout error:', error);
-      alert('Checkout failed: ' + (error?.message || error));
     }
-  }
-</script>
-
 
     function initStripeButtons() {
       document.querySelectorAll('.js-checkout-btn').forEach(btn => {
