@@ -1,8 +1,8 @@
 // /api/create-checkout-session.js
 import Stripe from 'stripe';
-import { getAuth } from './_lib/firebaseAdmin.js';
+import { getAuth } from './_lib/firebaseAdmin.js'; // uses your file; falls back if Admin missing
 
-const { STRIPE_SECRET_KEY } = process.env;
+const { STRIPE_SECRET_KEY, FIREBASE_WEB_API_KEY } = process.env;
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 function keyMode(key) {
@@ -11,28 +11,62 @@ function keyMode(key) {
        : 'unknown';
 }
 
+// Fallback verifier using Firebase REST (no service account required)
+async function verifyWithGoogle(idToken) {
+  if (!FIREBASE_WEB_API_KEY) {
+    throw new Error('Firebase Admin not initialized and FIREBASE_WEB_API_KEY is missing');
+  }
+  const resp = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(FIREBASE_WEB_API_KEY)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    }
+  );
+
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    const msg = body?.error?.message || `${resp.status} ${resp.statusText}`;
+    throw new Error(`Firebase REST verify failed: ${msg}`);
+  }
+
+  const data = await resp.json(); // { users: [ { localId, email, ... } ] }
+  const user = Array.isArray(data.users) && data.users[0];
+  if (!user?.localId) throw new Error('Firebase REST verify returned no user');
+  return { uid: user.localId, email: user.email || '' };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     if (!stripe) return res.status(500).json({ error: 'Missing STRIPE_SECRET_KEY' });
 
-    // Verify Firebase user (now using lazy Admin init)
+    // ---- Verify Firebase user (Admin first, REST fallback) ----
     const idToken = (req.headers.authorization || '').replace('Bearer ', '').trim();
     if (!idToken) return res.status(401).json({ error: 'Missing Firebase auth token' });
 
     let decoded;
     try {
-      const adminAuth = getAuth();                // <- lazy retry here
+      // try Admin (if initialized)
+      const adminAuth = getAuth();
       decoded = await adminAuth.verifyIdToken(idToken);
     } catch (e) {
-      return res.status(401).json({ error: `Firebase auth error: ${e?.message || e?.code || e}` });
+      // fallback to REST verification when Admin isn't initialized
+      try {
+        decoded = await verifyWithGoogle(idToken); // { uid, email }
+      } catch (restErr) {
+        return res.status(401).json({
+          error: `Firebase auth error: ${restErr?.message || restErr?.code || restErr}`,
+        });
+      }
     }
 
     const { priceId, mode, service, optionsKey } = req.body || {};
     if (!priceId) return res.status(400).json({ error: 'Missing priceId in request body' });
 
-    // Validate price and check live/test mode alignment
+    // ---- Validate price and check live/test mode alignment ----
     let price;
     try {
       price = await stripe.prices.retrieve(priceId);
@@ -50,20 +84,23 @@ export default async function handler(req, res) {
       });
     }
 
-    // Build origin for success/cancel
+    // ---- Build origin for success/cancel ----
     const proto = req.headers['x-forwarded-proto'] || 'https';
     const host  = req.headers['x-forwarded-host'] || req.headers.host;
     const origin = `${proto}://${host}`;
 
+    // ---- Create Checkout Session ----
     const session = await stripe.checkout.sessions.create({
       mode: mode === 'payment' ? 'payment' : 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
+      allow_promotion_codes: true,
+      customer_email: decoded?.email || undefined, // helpful for Stripe receipts
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cancel`,
       metadata: {
         service: service || '',
         optionsKey: optionsKey || '',
-        firebaseUid: decoded?.uid || ''
+        firebaseUid: decoded?.uid || '',
       }
     });
 
