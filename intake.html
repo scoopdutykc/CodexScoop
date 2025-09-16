@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scoop Duty KC — Service Intake</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+  <style>
+    .card { box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1) }
+    .card:hover { transform: translateY(-3px) }
+    .req:after { content:" *"; color: #dc2626; }
+  </style>
+</head>
+<body class="font-sans bg-gray-50">
+  <!-- Nav -->
+  <nav class="bg-white shadow-md sticky top-0 z-50">
+    <div class="container mx-auto px-6 py-4">
+      <div class="flex justify-between items-center">
+        <a href="/" class="text-2xl font-bold text-green-600">
+          Scoop Duty <span class="text-green-800">KC</span>
+        </a>
+        <div class="hidden md:flex space-x-3">
+          <a href="/billing" class="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200 transition font-medium">Billing</a>
+          <button id="loginBtn" class="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition font-medium">Login</button>
+          <button id="signupBtn" class="px-4 py-2 rounded-md bg-green-800 text-white hover:bg-green-900 transition font-medium">Sign Up</button>
+        </div>
+        <button class="md:hidden focus:outline-none"><i data-feather="menu"></i></button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <header class="bg-green-600 text-white">
+    <div class="container mx-auto px-6 py-12">
+      <h1 class="text-3xl md:text-4xl font-bold" data-aos="fade-up">New Service Intake</h1>
+      <p class="mt-2 text-green-100" data-aos="fade-up" data-aos-delay="100">
+        Tell us a bit about your home and pets so we can get you scheduled.
+      </p>
+    </div>
+  </header>
+
+  <!-- Form -->
+  <section class="py-12">
+    <div class="container mx-auto px-6 max-w-3xl">
+      <form id="intakeForm" class="bg-white rounded-xl p-6 md:p-8 card transition" data-aos="fade-up">
+        <!-- Hidden fields we pass along -->
+        <input type="hidden" id="sessionId" name="sessionId"/>
+
+        <!-- Contact -->
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Contact</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-gray-700 font-medium mb-1 req">Full name</label>
+            <input id="fullName" name="fullName" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Jane Doe"/>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1 req">Phone</label>
+            <input id="phone" name="phone" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="(555) 555-5555"/>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <label class="block text-gray-700 font-medium mb-1 req">Service Address</label>
+          <div class="grid md:grid-cols-2 gap-4">
+            <input id="addr1" name="addr1" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Address line 1"/>
+            <input id="addr2" name="addr2" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Address line 2 (optional)"/>
+            <input id="city" name="city" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="City"/>
+            <div class="grid grid-cols-2 gap-4">
+              <input id="state" name="state" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="State"/>
+              <input id="zip" name="zip" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="ZIP"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Access & Pets -->
+        <h2 class="text-xl font-bold text-gray-800 mt-10 mb-4">Access & Pets</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-gray-700 font-medium mb-1">Gate code / Access notes</label>
+            <input id="access" name="access" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Gate code, lockbox location, etc."/>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1 req">Front Yard, Backyard, or Both?</label>
+            <select id="area" name="area" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+              <option value="">Select one</option>
+              <option>Front Yard</option>
+              <option>Backyard</option>
+              <option>Both</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Pet name(s)</label>
+            <input id="pets" name="pets" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Rex, Bella, Luna"/>
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-gray-700 font-medium mb-1">Yard / special notes</label>
+            <textarea id="notes" name="notes" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Sprinklers, hazards, where waste can be found, etc."></textarea>
+          </div>
+        </div>
+
+        <!-- Scheduling -->
+        <h2 class="text-xl font-bold text-gray-800 mt-10 mb-4">Scheduling Preference</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Preferred day (e.g., Tuesdays)</label>
+            <input id="prefDay" name="prefDay" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Tuesdays"/>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Preferred time window (e.g., 1–3 PM)</label>
+            <input id="prefTime" name="prefTime" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="1–3 PM"/>
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-gray-700 font-medium mb-1">Anything else we should know?</label>
+            <textarea id="extra" name="extra" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"></textarea>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="mt-8 flex items-center gap-4">
+          <button id="submitBtn" type="submit" class="bg-green-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-green-700 transition">
+            Submit Intake
+          </button>
+          <span id="status" class="text-sm text-gray-500"></span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <footer class="bg-gray-800 text-white py-10">
+    <div class="container mx-auto px-6 text-center text-gray-400">
+      &copy; 2025 Scoop Duty KC. All rights reserved.
+    </div>
+  </footer>
+
+  <script>
+    // Match your site's Firebase init (same literals you already use)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBiCaBDOOql_0MO1KRWaATh-ATc60TutMw",
+      authDomain: "scoop-duty.firebaseapp.com",
+      projectId: "scoop-duty",
+      storageBucket: "scoop-duty.firebasestorage.app",
+      messagingSenderId: "888851571683",
+      appId: "1:888851571683:web:d48f67ba25c6bd780bb6d6"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    AOS.init({ duration: 800, easing: 'ease-in-out', once: true });
+    feather.replace();
+
+    // Nav login/signup behavior (same as index)
+    auth.onAuthStateChanged((user) => {
+      const loginBtn = document.getElementById('loginBtn');
+      const signupBtn = document.getElementById('signupBtn');
+      if (user) {
+        if (loginBtn) loginBtn.textContent = 'Account';
+        if (signupBtn) signupBtn.textContent = 'Logout';
+        // Prefill
+        if (user.displayName) document.getElementById('fullName').value = user.displayName;
+      } else {
+        if (loginBtn) loginBtn.textContent = 'Login';
+        if (signupBtn) signupBtn.textContent = 'Sign Up';
+      }
+    });
+
+    document.getElementById('loginBtn').addEventListener('click', () => {
+      if (auth.currentUser) {
+        window.location.href = '/account';
+      } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(err => alert('Login error: ' + (err?.message || err)));
+      }
+    });
+    document.getElementById('signupBtn').addEventListener('click', () => {
+      if (auth.currentUser) {
+        auth.signOut();
+      } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(err => alert('Signup error: ' + (err?.message || err)));
+      }
+    });
+
+    // Capture session_id from Stripe redirect if present
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get('session_id') || '';
+    document.getElementById('sessionId').value = sessionId;
+
+    // Submit handler -> POST /api/submit-intake
+    document.getElementById('intakeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      const btn = document.getElementById('submitBtn');
+
+      try {
+        const user = auth.currentUser;
+        if (!user) { alert('Please sign in first.'); return; }
+        btn.disabled = true; btn.classList.add('opacity-70', 'cursor-not-allowed');
+        status.textContent = 'Submitting...';
+
+        const body = {
+          sessionId: document.getElementById('sessionId').value,
+          fullName:  document.getElementById('fullName').value,
+          phone:     document.getElementById('phone').value,
+          address: {
+            line1: document.getElementById('addr1').value,
+            line2: document.getElementById('addr2').value,
+            city:  document.getElementById('city').value,
+            state: document.getElementById('state').value,
+            zip:   document.getElementById('zip').value,
+          },
+          access:   document.getElementById('access').value,
+          area:     document.getElementById('area').value,
+          pets:     document.getElementById('pets').value,
+          notes:    document.getElementById('notes').value,
+          prefDay:  document.getElementById('prefDay').value,
+          prefTime: document.getElementById('prefTime').value,
+          extra:    document.getElementById('extra').value,
+        };
+
+        const token = await user.getIdToken();
+        const resp = await fetch('/api/submit-intake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(body)
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.error || 'Failed to submit intake');
+
+        status.textContent = 'Thanks! Your intake has been received.';
+        btn.textContent = 'Submitted';
+      } catch (err) {
+        console.error(err);
+        alert('Intake error: ' + (err?.message || err));
+        status.textContent = '';
+      } finally {
+        btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed');
+      }
+    });
+  </script>
+</body>
+</html>
