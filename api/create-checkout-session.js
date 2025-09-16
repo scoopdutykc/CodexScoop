@@ -111,21 +111,21 @@ export default async function handler(req, res) {
       });
     }
 
-    // ✅ Decide Checkout mode from the Price itself
+    // Decide Checkout mode from the Price itself
     const resolvedMode = price.recurring ? 'subscription' : 'payment';
 
-    // URLs
+    // Build origin for URLs
     const proto = req.headers['x-forwarded-proto'] || 'https';
     const host  = req.headers['x-forwarded-host'] || req.headers.host;
     const origin = `${proto}://${host}`;
 
-    // Create Checkout Session
+    // ✅ Redirect straight to /intake after success (keep session_id)
     const session = await stripe.checkout.sessions.create({
       mode: resolvedMode,
       line_items: [{ price: priceId, quantity: 1 }],
       allow_promotion_codes: true,
       customer_email: decoded?.email || undefined,
-      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/intake?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cancel`,
       metadata: {
         service: service || '',
