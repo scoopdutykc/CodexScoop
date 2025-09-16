@@ -455,7 +455,7 @@
       return Array.from(out);
     };
 
-    // ✅ Updated to recognize "Twice Weekly" (and still accept legacy "Bi-Weekly")
+    // Recognize "Twice Weekly" (and accept legacy "Bi-Weekly")
     const toCsvFreq = (ui) => {
       const v = norm(ui);
       if (v.includes('one-time')) return 'onetime';
@@ -545,7 +545,104 @@
       if (e.target.tagName === 'SELECT') updatePrice();
     });
 
-    const PRICE_IDS = {"onetime yard scooping":"price_1S4SQLRzSCSZiE1R6YBer4cZ","onetime doggy playtime":"price_1S4SPURzSCSZiE1RrLUYru5Z","onetime litter trade":"price_1S4SP8RzSCSZiE1RGHuQugOG","three weekly, 4+ boxes":"price_1S4SMkRzSCSZiE1R7NfCh5SK","three weekly, 1 box":"price_1S4SMkRzSCSZiE1RSsgGk0q0","once weekly, 4+ boxes":"price_1S4SMkRzSCSZiE1RTnjCXsc1","twice weekly, 2 boxes":"price_1S4SMkRzSCSZiE1RDKVJEEhC","twice weekly, 4+ boxes":"price_1S4SMkRzSCSZiE1RQvJhd8Qf","once weekly, 1 box":"price_1S4SMkRzSCSZiE1RJfqUq3lG","once weekly, 3 boxes":"price_1S4SMkRzSCSZiE1RAdpBMbZo","twice weekly, 3 boxes":"price_1S4SMkRzSCSZiE1RzyBnrWuL","three weekly, 3 boxes":"price_1S4SMkRzSCSZiE1Ra3vgD0at","three weekly, 2 boxes":"price_1S4SMkRzSCSZiE1Ry3Y3e4uj","twice weekly, 1 box":"price_1S4SMkRzSCSZiE1RNWAoEUNN","once weekly, 2 boxes":"price_1S4SMjRzSCSZiE1RYjwR8hZA","three weekly, 5+ dogs":"price_1S4S97RzSCSZiE1R4TlRQ9SJ","twice weekly, 5+ dogs":"price_1S4S8uRzSCSZiE1Rjmo5rn1Q","one weekly, 5+ dogs":"price_1S4S8hRzSCSZiE1RA92U91Ga","three weekly, 4 dogs":"price_1S4S8HRzSCSZiE1RJH9QitJg","twice weekly, 4 dogs":"price_1S4S83RzSCSZiE1RhQkTV8lH","once weekly, 4 dogs":"price_1S4S7uRzSCSZiE1Rj6E6VQeR","three weekly, 3 dogs":"price_1S4S7eRzSCSZiE1RvyWQfGVO","twice weekly, 3 dogs":"price_1S4S7TRzSCSZiE1Rk1smZKZJ","once weekly, 3 dogs":"price_1S4S7KRzSCSZiE1R6bQyOALX","three weekly, 2 dogs":"price_1S4S6wRzSCSZiE1RUb9CPlCh","twice weekly, 2 dogs":"price_1S4S6kRzSCSZiE1R4k9cBv0w","once weekly, 2 dogs":"price_1S4S6XRzSCSZiE1R1zI1UE9X","three weekly, 1 dog":"price_1S4S6GRzSCSZiE1R6wB1a4pq","twice weekly, 1 dog":"price_1S4S5yRzSCSZiE1Rk1T7wzN4","once weekly, 1 dog":"price_1S4S5lRzSCSZiE1RkO2sCqgP","three weekly, 5+ dogs, large yard":"price_1S4S5URzSCSZiE1R5nN7YF7a","three weekly, 5+ dogs, medium yard":"price_1S4S5FRzSCSZiE1R1YqkM0s9","three weekly, 5+ dogs, small yard":"price_1S4S51RzSCSZiE1R6zV8N7wK","three weekly, 4 dogs, large yard":"price_1S4S4oRzSCSZiE1RkYH5x1eQ","three weekly, 4 dogs, medium yard":"price_1S4S4bRzSCSZiE1RrHq8eH93","three weekly, 4 dogs, small yard":"price_1S4S4PRzSCSZiE1R7m8L3iGQ","three weekly, 3 dogs, large yard":"price_1S4S4ARzSCSZiE1RM6d2t0pH","three weekly, 3 dogs, medium yard":"price_1S4S39RzSCSZiE1R1bqp1PzG","three weekly, 3 dogs, small yard":"price_1S4S3oRzSCSZiE1R4I8emc1Z","three weekly, 2 dogs, large yard":"price_1S4S3ZRzSCSZiE1R3K0vI2mK","three weekly, 2 dogs, medium yard":"price_1S4S3MRzSCSZiE1R5Kj6b8Yf","three weekly, 2 dogs, small yard":"price_1S4S3BRzSCSZiE1R9Ft2kT3W","three weekly, 1 dog, large yard":"price_1S4S2xRzSCSZiE1Rk1m0m8cE","three weekly, 1 dog, medium yard":"price_1S4S2kRzSCSZiE1Ruz6X2m5V","three weekly, 1 dog, small yard":"price_1S4S2XRzSCSZiE1Rr2n5C0qB","twice weekly, 5 dogs, large yard":"price_1S4S2IRzSCSZiE1R3cQw9u7L","twice weekly, 4 dogs, large yard":"price_1S4S1zRzSCSZiE1R0xKk4YhL","twice weekly, 3 dogs, large yard":"price_1S4S1lRzSCSZiE1R3wU7kF5B","twice weekly, 2 dogs, large yard":"price_1S4S1WRzSCSZiE1Rk6B2qH0Z","twice weekly, 5+ dogs, medium yard":"price_1S4S1JRzSCSZiE1R2bC3nV6M","twice weekly, 4 dogs, medium yard":"price_1S4S07RzSCSZiE1Rk7L8mN4P","twice weekly, 4 dogs, small yard":"price_1S4S0qRzSCSZiE1Rr8C9bV2H","twice weekly, 1 dog, large yard":"price_1S4S0bRzSCSZiE1R1kM0pN4V","twice weekly, 1 dog, medium yard":"price_1S4S0PRzSCSZiE1Rk4Q6nM8B","twice weekly, 1 dog, small yard":"price_1S4S09RzSCSZiE1R7zL1bN3M","twice weekly, 3 dogs, small yard":"price_1S4S0ARzSCSZiE1R0nB7vL5Z","twice weekly, 2 dogs, small yard":"price_1S4S0BRzSCSZiE1R8tM2sN6Q","once weekly, 5+ dogs, large yard":"price_1S4S0CRzSCSZiE1R7vQ2zN9B","once weekly, 5+ dogs, medium yard":"price_1S4S0DRzSCSZiE1R4nM7bK2P","once weekly, 5+ dogs, small yard":"price_1S4S0ERzSCSZiE1R3vN5lK8D","once weekly, 4 dogs, large yard":"price_1S4S0FRzSCSZiE1R2mJ6hP4V","once weekly, 4 dogs, medium yard":"price_1S4S0GRzSCSZiE1R5bV8cK3Q","once weekly, 4 dogs, small yard":"price_1S4S0HRzSCSZiE1R9kM1qL7S","once weekly, 3 dogs, large yard":"price_1S4S0IRzSCSZiE1R8nB5mC2Q","once weekly, 3 dogs, medium yard":"price_1S4S0JRzSCSZiE1R2qN4xV8L","once weekly, 3 dogs, small yard":"price_1S4S0KRzSCSZiE1R6pB7cD4M","once weekly, 2 dogs, large yard":"price_1S4S0LRzSCSZiE1R7mC5nB2V","once weekly, 2 dogs, medium yard":"price_1S4S0MRzSCSZiE1R8bN4cM6K","once weekly, 2 dogs, small yard":"price_1S4S0NRzSCSZiE1R4mK7bC2N","once weekly, 1 dog, large yard":"price_1S4S0ORzSCSZiE1R9vB1nM5Q","once weekly, 1 dog, medium yard":"price_1S4S0PRzSCSZiE1R6mN3bC8K","once weekly, 1 dog, small yard":"price_1S4S0QRzSCSZiE1R2bV5nK8L"};
+    // === EXACT Price IDs from your table ===
+    const PRICE_IDS = {
+      // Onetime services
+      "onetime yard scooping": "price_1S4SQLRzSCSZiE1R6YBer4cZ",
+      "onetime doggy playtime": "price_1S4SPURzSCSZiE1RrLUYru5Z",
+      "onetime litter trade":   "price_1S4SP8RzSCSZiE1RGHuQugOG",
+
+      // Kitty Litter Trade
+      "three weekly, 4+ boxes": "price_1S4SMkRzSCSZiE1R7NfCh5SK",
+      "three weekly, 1 box":    "price_1S4SMkRzSCSZiE1RSsgGk0q0",
+      "once weekly, 4+ boxes":  "price_1S4SMkRzSCSZiE1RTnjCXsc1",
+      "twice weekly, 2 boxes":  "price_1S4SMkRzSCSZiE1RDKVJEEhC",
+      "twice weekly, 4+ boxes": "price_1S4SMkRzSCSZiE1RQvJhd8Qf",
+      "once weekly, 1 box":     "price_1S4SMkRzSCSZiE1RJfqUq3lG",
+      "once weekly, 3 boxes":   "price_1S4SMkRzSCSZiE1RAdpBMbZo",
+      "twice weekly, 3 boxes":  "price_1S4SMkRzSCSZiE1RzyBnrWuL",
+      "three weekly, 3 boxes":  "price_1S4SMkRzSCSZiE1Ra3vgD0at",
+      "three weekly, 2 boxes":  "price_1S4SMkRzSCSZiE1Ry3Y3e4uj",
+      "twice weekly, 1 box":    "price_1S4SMkRzSCSZiE1RNWAoEUNN",
+      "once weekly, 2 boxes":   "price_1S4SMjRzSCSZiE1RYjwR8hZA",
+
+      // Doggy Playtime (dogs)
+      "three weekly, 5+ dogs": "price_1S4S97RzSCSZiE1R4TlRQ9SJ",
+      "twice weekly, 5+ dogs": "price_1S4S8uRzSCSZiE1Rjmo5rn1Q",
+      "once weekly, 5+ dogs":  "price_1S4S8hRzSCSZiE1RA92U91Ga",  // normalized from "one weekly"
+      "three weekly, 4 dogs":  "price_1S4S8HRzSCSZiE1RJH9QitJg",
+      "twice weekly, 4 dogs":  "price_1S4S83RzSCSZiE1RhQkTV8lH",
+      "once weekly, 4 dogs":   "price_1S4S7oRzSCSZiE1Rfy3pd2fO",
+      "three weekly, 3 dogs":  "price_1S4S6xRzSCSZiE1Ri8Juk6tL",
+      "twice weekly, 3 dogs":  "price_1S4S6SRzSCSZiE1RHaGiU7oO",
+      "once weekly, 3 dogs":   "price_1S4S5xRzSCSZiE1RdpJPI75j",
+      "three weekly, 2 dogs":  "price_1S4S4YRzSCSZiE1RuTO78vgQ",
+      "twice weekly, 2 dogs":  "price_1S4S3hRzSCSZiE1Re5I1ytX6",
+      "once weekly, 2 dogs":   "price_1S4S2rRzSCSZiE1RAqBqGoBL",
+      "three weekly, 1 dog":   "price_1S4S2DRzSCSZiE1RAC39V5di",
+      "twice weekly, 1 dog":   "price_1S4S1tRzSCSZiE1RERtiU3Zw",
+      "once weekly, 1 dog":    "price_1S4S1SRzSCSZiE1Rs3s26GTk",
+
+      // Yard Scooping (dogs + yard)
+      "three weekly, 5+ dogs, large yard":   "price_1S4RxKRzSCSZiE1RjnD3PZbL",
+      "three weekly, 5+ dogs, medium yard":  "price_1S4RwxRzSCSZiE1R7jjcmcMS", // capitalized source handled by norm()
+      "three weekly, 5+ dogs, small yard":   "price_1S4RKQRzSCSZiE1RmyKeMoYZ",
+
+      "three weekly, 4 dogs, large yard":    "price_1S4RJrRzSCSZiE1RC0HItdl5",
+      "three weekly, 4 dogs, medium yard":   "price_1S4RJTRzSCSZiE1RAbqPqxWk",
+      "three weekly, 4 dogs, small yard":    "price_1S4RJ7RzSCSZiE1R38EK1Prs",
+
+      "three weekly, 3 dogs, large yard":    "price_1S4RIoRzSCSZiE1Rb3O6sGSb",
+      "three weekly, 3 dogs, medium yard":   "price_1S4RI4RzSCSZiE1R7qofG6ZP",
+      "three weekly, 3 dogs, small yard":    "price_1S4RHcRzSCSZiE1RhAE1PWEK",
+
+      "three weekly, 2 dogs, large yard":    "price_1S4RGURzSCSZiE1RTvSi6W2k",
+      "three weekly, 2 dogs, medium yard":   "price_1S4RFvRzSCSZiE1RzTuZUfES",
+      "three weekly, 2 dogs, small yard":    "price_1S4RFZRzSCSZiE1Rm8ko1qkC",
+
+      "three weekly, 1 dog, large yard":     "price_1S4RFCRzSCSZiE1RHUYYE5Bt",
+      "three weekly, 1 dog, medium yard":    "price_1S4REVRzSCSZiE1RWRtDQEXV",
+      "three weekly, 1 dog, small yard":     "price_1S4REARzSCSZiE1RQbt0iX0f",
+
+      "twice weekly, 5 dogs, large yard":    "price_1S4RBPRzSCSZiE1RWvMkUaNg",   // alias handles 5 vs 5+ if needed
+      "twice weekly, 4 dogs, large yard":    "price_1S4RB7RzSCSZiE1Rnj8Orwaj",
+      "twice weekly, 3 dogs, large yard":    "price_1S4RAQRzSCSZiE1Rln1WsHE1",
+      "twice weekly, 2 dogs, large yard":    "price_1S4RA8RzSCSZiE1RjYqqmT49",
+
+      "twice weekly, 5+ dogs, medium yard":  "price_1S4R9fRzSCSZiE1R4sVC1peo",
+      "twice weekly, 4 dogs, medium yard":   "price_1S4R9LRzSCSZiE1RExy6g1TQ",
+      "twice weekly, 3 dogs, medium yard":   "price_1S4R8uRzSCSZiE1R9UDz913w",
+      "twice weekly, 2 dogs, medium yard":   "price_1S4R7rRzSCSZiE1RGBu448IQ",
+
+      "twice weekly, 5+ dogs, small yard":   "price_1S4R72RzSCSZiE1RI2EfZcog",
+      "twice weekly, 4 dogs, small yard":    "price_1S4R6eRzSCSZiE1ReY37iOPp",
+      "twice weekly, 1 dog, large yard":     "price_1S4R6ARzSCSZiE1RhUbHCrYA",
+      "twice weekly, 1 dog, medium yard":    "price_1S4R5bRzSCSZiE1REa5M4LIA",
+      "twice weekly, 3 dogs, small yard":    "price_1S4R4dRzSCSZiE1RwOjpcmiV",
+      "twice weekly, 2 dogs, small yard":    "price_1S4R4KRzSCSZiE1RO2k16aCE",
+
+      "once weekly, 5+ dogs, large yard":    "price_1S4R1CRzSCSZiE1RGBpPP7OO",
+      "once weekly, 5+ dogs, medium yard":   "price_1S4R0aRzSCSZiE1RY5FYLhxr",
+      "once weekly, 5+ dogs, small yard":    "price_1S4QzzRzSCSZiE1RVgSAPbCn",
+
+      "once weekly, 4 dogs, large yard":     "price_1S4Qz9RzSCSZiE1RyVU98RV1",
+      "once weekly, 4 dogs, medium yard":    "price_1S4QyuRzSCSZiE1RTR1e4Ndc",
+      "once weekly, 4 dogs, small yard":     "price_1S4QwLRzSCSZiE1RRbeRHoIL",
+
+      "once weekly, 3 dogs, large yard":     "price_1S4QsrRzSCSZiE1R5f6jtsrB",
+      "once weekly, 3 dogs, medium yard":    "price_1S4QrhRzSCSZiE1RGqGvgW6S",
+
+      "once weekly, 2 dogs, large yard":     "price_1S4QqsRzSCSZiE1RsVWQpe3C",  // normalized from "Once weekly"
+      "once weekly, 2 dogs, medium yard":    "price_1S4Qq9RzSCSZiE1RykiEaQaV",  // normalized
+
+      "twice weekly, 1 dog, small yard":     "price_1S4QkuRzSCSZiE1RkFC13VKH",
+
+      "once weekly, 2 dogs, small yard":     "price_1S4QdVRzSCSZiE1RKpYBWYke",
+      "once weekly, 1 dog, large yard":      "price_1S4QdVRzSCSZiE1RiET0HGih",
+      "once weekly, 1 dog, medium yard":     "price_1S4QdVRzSCSZiE1RGlbtpuaU",
+      "once weekly, 3 dogs, small yard":     "price_1S4QdVRzSCSZiE1RAeefk5Lc",
+      "once weekly, 1 dog, small yard":      "price_1S4FGARzSCSZiE1RcXQ5NV2K"
+    };
 
     function isOneTimeKey(k) { return /^onetime\s/i.test(k); }
 
