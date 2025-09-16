@@ -1,6 +1,6 @@
 // /api/create-checkout-session.js
 import Stripe from 'stripe';
-import { auth } from './_lib/firebaseAdmin.js';
+import { getAuth } from './_lib/firebaseAdmin.js';
 
 const { STRIPE_SECRET_KEY } = process.env;
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
@@ -17,13 +17,14 @@ export default async function handler(req, res) {
   try {
     if (!stripe) return res.status(500).json({ error: 'Missing STRIPE_SECRET_KEY' });
 
-    // Verify Firebase user
+    // Verify Firebase user (now using lazy Admin init)
     const idToken = (req.headers.authorization || '').replace('Bearer ', '').trim();
     if (!idToken) return res.status(401).json({ error: 'Missing Firebase auth token' });
 
     let decoded;
     try {
-      decoded = await auth.verifyIdToken(idToken);
+      const adminAuth = getAuth();                // <- lazy retry here
+      decoded = await adminAuth.verifyIdToken(idToken);
     } catch (e) {
       return res.status(401).json({ error: `Firebase auth error: ${e?.message || e?.code || e}` });
     }
