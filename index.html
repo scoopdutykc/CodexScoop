@@ -455,20 +455,22 @@
       return Array.from(out);
     };
 
+    // ✅ Updated to recognize "Twice Weekly" (and still accept legacy "Bi-Weekly")
     const toCsvFreq = (ui) => {
       const v = norm(ui);
       if (v.includes('one-time')) return 'onetime';
       if (v === 'weekly') return 'once weekly';
-      if (v === 'bi-weekly') return 'twice weekly';
+      if (v === 'twice weekly' || v === 'bi-weekly') return 'twice weekly';
       if (v === 'three weekly') return 'three weekly';
       return v;
     };
-    const toCsvPets = (ui) => norm(ui);
-    const toCsvYard = (ui) => {
+
+    const toCsvPets  = (ui) => norm(ui);
+    const toCsvYard  = (ui) => {
       const l = norm(ui);
-      if (l.startsWith('small')) return 'small yard';
+      if (l.startsWith('small'))  return 'small yard';
       if (l.startsWith('medium')) return 'medium yard';
-      if (l.startsWith('large')) return 'large yard';
+      if (l.startsWith('large'))  return 'large yard';
       return '';
     };
     const toCsvBoxes = (ui) => norm(ui);
