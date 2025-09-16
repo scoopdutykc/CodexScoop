@@ -1,0 +1,15 @@
+{
+  "name": "scoop-duty-kc",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "npx serve -p 3000 ."
+  },
+  "dependencies": {
+    "stripe": "^16.0.0",
+    "firebase-admin": "^12.0.0",
+    "serve": "^14.2.0"
+  }
+}
