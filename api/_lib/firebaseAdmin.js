@@ -6,10 +6,7 @@ function getCredential() {
   if (svcJson) {
     try {
       const parsed = JSON.parse(svcJson);
-      // Fix escaped newlines if needed
-      if (parsed.private_key) {
-        parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
-      }
+      if (parsed.private_key) parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
       return admin.credential.cert(parsed);
     } catch (e) {
       console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:', e);
@@ -24,13 +21,20 @@ function getCredential() {
   if (privateKey) privateKey = privateKey.replace(/\\n/g, '\n');
 
   if (projectId && clientEmail && privateKey) {
-    return admin.credential.cert({ project_id: projectId, client_email: clientEmail, private_key: privateKey });
+    return admin.credential.cert({
+      project_id: projectId,
+      client_email: clientEmail,
+      private_key: privateKey,
+    });
   }
 
-  console.error('Firebase Admin credential not configured. Set FIREBASE_SERVICE_ACCOUNT or (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).');
+  console.error(
+    'Firebase Admin credential not configured. Set FIREBASE_SERVICE_ACCOUNT or (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).'
+  );
   return null;
 }
 
+// Eager attempt (your original behavior)
 if (!admin.apps.length) {
   const cred = getCredential();
   if (cred) {
@@ -38,7 +42,23 @@ if (!admin.apps.length) {
   }
 }
 
-export const auth = admin.apps.length ? admin.auth() : {
-  // Minimal shim to make callers fail loudly:
-  verifyIdToken: async () => { throw new Error('Firebase Admin not initialized'); }
-};
+// Export the original `auth` (kept for compatibility)
+export const auth = admin.apps.length
+  ? admin.auth()
+  : {
+      verifyIdToken: async () => {
+        throw new Error('Firebase Admin not initialized');
+      },
+    };
+
+// NEW: Lazy getter — retries initialization at call time to avoid cold-start/env timing issues
+export function getAuth() {
+  if (admin.apps.length) return admin.auth();
+
+  const cred = getCredential();
+  if (!cred) {
+    throw new Error('Firebase Admin not initialized');
+  }
+  admin.initializeApp({ credential: cred });
+  return admin.auth();
+}
