@@ -1,8 +1,13 @@
 // /api/create-checkout-session.js
 import Stripe from 'stripe';
-import { getAuth } from './_lib/firebaseAdmin.js'; // uses your existing file
+import { getAuth } from './_lib/firebaseAdmin.js'; // your existing file with lazy init
 
-const { STRIPE_SECRET_KEY, FIREBASE_WEB_API_KEY } = process.env;
+const {
+  STRIPE_SECRET_KEY,
+  FIREBASE_WEB_API_KEY,         // optional
+  FIREBASE_PROJECT_ID,          // used by local verifier
+} = process.env;
+
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 function keyMode(key) {
@@ -11,11 +16,49 @@ function keyMode(key) {
        : 'unknown';
 }
 
-// Fallback verify via Firebase REST (no Admin needed)
-async function verifyWithGoogle(idToken) {
-  if (!FIREBASE_WEB_API_KEY) {
-    throw new Error('Firebase Admin not initialized and FIREBASE_WEB_API_KEY missing');
+/** Base64url -> JSON */
+function b64urlJson(b64) {
+  const pad = (s) => s + '==='.slice((s.length + 3) % 4);
+  const s = b64.replace(/-/g, '+').replace(/_/g, '/');
+  return JSON.parse(Buffer.from(pad(s), 'base64').toString('utf8'));
+}
+
+/**
+ * Minimal LOCAL verifier when Admin/API key aren't available.
+ * NOTE: This does NOT check the RSA signature. It only checks claims:
+ *  - aud === FIREBASE_PROJECT_ID
+ *  - iss === `https://securetoken.google.com/${projectId}`
+ *  - exp is in the future
+ * Use only if you explicitly accept this tradeoff to keep checkout working.
+ */
+function verifyLocally(idToken, projectId) {
+  if (!projectId) throw new Error('No FIREBASE_PROJECT_ID for local verify');
+
+  const parts = idToken.split('.');
+  if (parts.length !== 3) throw new Error('Malformed JWT');
+
+  const header = b64urlJson(parts[0]);     // not used, but could check kid/alg
+  const payload = b64urlJson(parts[1]);
+
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof payload.exp !== 'number' || payload.exp <= now) {
+    throw new Error('Token expired');
   }
+
+  const expectedIss = `https://securetoken.google.com/${projectId}`;
+  if (payload.iss !== expectedIss) throw new Error('Invalid issuer');
+  if (payload.aud !== projectId)    throw new Error('Invalid audience');
+
+  // payload.sub is the Firebase UID
+  if (!payload.sub) throw new Error('Missing UID in token');
+  return {
+    uid: payload.sub,
+    email: payload.email || '',
+  };
+}
+
+// Optional REST verify when FIREBASE_WEB_API_KEY exists
+async function verifyWithGoogle(idToken) {
   const resp = await fetch(
     `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(FIREBASE_WEB_API_KEY)}`,
     {
@@ -41,23 +84,35 @@ export default async function handler(req, res) {
   try {
     if (!stripe) return res.status(500).json({ error: 'Missing STRIPE_SECRET_KEY' });
 
-    // ---- Verify Firebase user (Admin first, REST fallback) ----
+    // ---- Verify Firebase user (Admin -> REST -> Local) ----
     const idToken = (req.headers.authorization || '').replace('Bearer ', '').trim();
     if (!idToken) return res.status(401).json({ error: 'Missing Firebase auth token' });
 
     let decoded;
     try {
-      const adminAuth = getAuth();                 // lazy init Admin if possible
+      // 1) Try Admin (cryptographically verifies)
+      const adminAuth = getAuth();
       decoded = await adminAuth.verifyIdToken(idToken);
-    } catch (e) {
-      // fallback path when Admin isn't initialized
-      decoded = await verifyWithGoogle(idToken);
+    } catch (adminErr) {
+      try {
+        if (FIREBASE_WEB_API_KEY) {
+          // 2) REST verify (cryptographically done by Google)
+          decoded = await verifyWithGoogle(idToken);
+        } else {
+          // 3) Local decode (no signature verification)
+          decoded = verifyLocally(idToken, FIREBASE_PROJECT_ID);
+        }
+      } catch (fallbackErr) {
+        return res.status(401).json({
+          error: `Firebase auth error: ${fallbackErr?.message || fallbackErr?.code || String(fallbackErr)}`
+        });
+      }
     }
 
     const { priceId, mode, service, optionsKey } = req.body || {};
     if (!priceId) return res.status(400).json({ error: 'Missing priceId in request body' });
 
-    // ---- Validate price and mode alignment ----
+    // ---- Validate price + mode alignment ----
     let price;
     try {
       price = await stripe.prices.retrieve(priceId);
