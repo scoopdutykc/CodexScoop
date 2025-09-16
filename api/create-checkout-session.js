@@ -5,20 +5,51 @@ import { auth } from './_lib/firebaseAdmin.js';
 const { STRIPE_SECRET_KEY } = process.env;
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
+function keyMode(key) {
+  return key?.startsWith('sk_live_') ? 'live'
+       : key?.startsWith('sk_test_') ? 'test'
+       : 'unknown';
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     if (!stripe) return res.status(500).json({ error: 'Missing STRIPE_SECRET_KEY' });
 
+    // Verify Firebase user
     const idToken = (req.headers.authorization || '').replace('Bearer ', '').trim();
-    if (!idToken) return res.status(401).json({ error: 'Missing auth token' });
+    if (!idToken) return res.status(401).json({ error: 'Missing Firebase auth token' });
 
-    const decoded = await auth.verifyIdToken(idToken);
+    let decoded;
+    try {
+      decoded = await auth.verifyIdToken(idToken);
+    } catch (e) {
+      return res.status(401).json({ error: `Firebase auth error: ${e?.message || e?.code || e}` });
+    }
 
     const { priceId, mode, service, optionsKey } = req.body || {};
-    if (!priceId) return res.status(400).json({ error: 'Missing priceId' });
+    if (!priceId) return res.status(400).json({ error: 'Missing priceId in request body' });
 
+    // Validate price and check live/test mode alignment
+    let price;
+    try {
+      price = await stripe.prices.retrieve(priceId);
+    } catch (e) {
+      const acctMode = keyMode(STRIPE_SECRET_KEY);
+      const hint = `Verify that Price "${priceId}" exists in your Stripe ${acctMode.toUpperCase()} account.`;
+      return res.status(400).json({ error: `${e?.message || e?.code || 'Stripe error'} — ${hint}` });
+    }
+
+    const acctMode = keyMode(STRIPE_SECRET_KEY);
+    const priceMode = price.livemode ? 'live' : 'test';
+    if ((acctMode === 'live' && priceMode !== 'live') || (acctMode === 'test' && priceMode !== 'test')) {
+      return res.status(400).json({
+        error: `Stripe mode mismatch: your secret key is "${acctMode.toUpperCase()}" but price "${priceId}" is "${priceMode.toUpperCase()}".`
+      });
+    }
+
+    // Build origin for success/cancel
     const proto = req.headers['x-forwarded-proto'] || 'https';
     const host  = req.headers['x-forwarded-host'] || req.headers.host;
     const origin = `${proto}://${host}`;
@@ -31,7 +62,7 @@ export default async function handler(req, res) {
       metadata: {
         service: service || '',
         optionsKey: optionsKey || '',
-        firebaseUid: decoded.uid || ''
+        firebaseUid: decoded?.uid || ''
       }
     });
 
