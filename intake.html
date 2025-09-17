@@ -10,10 +10,9 @@
   <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
   <script src="https://unpkg.com/feather-icons"></script>
 
-  <!-- Firebase Web SDK (compat like your site) -->
+  <!-- Firebase Web SDK (auth only) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
 
   <style>
     .card { box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1) }
@@ -143,7 +142,7 @@
   </footer>
 
   <script>
-    // Firebase init (same literals you already use)
+    // Firebase init (auth only)
     const firebaseConfig = {
       apiKey: "AIzaSyBiCaBDOOql_0MO1KRWaATh-ATc60TutMw",
       authDomain: "scoop-duty.firebaseapp.com",
@@ -154,7 +153,6 @@
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    const db   = firebase.firestore();
 
     AOS.init({ duration: 800, easing: 'ease-in-out', once: true });
     feather.replace();
@@ -190,12 +188,12 @@
       }
     });
 
-    // Capture session_id from Stripe redirect if present
+    // Capture Stripe session_id from redirect
     const params = new URLSearchParams(location.search);
     const sessionId = params.get('session_id') || '';
     document.getElementById('sessionId').value = sessionId;
 
-    // Submit -> (1) server verifies Stripe (optional) (2) client writes to Firestore
+    // Submit -> POST to server (server writes to Firestore via Admin)
     document.getElementById('intakeForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const status = document.getElementById('status');
@@ -208,7 +206,6 @@
         btn.disabled = true; btn.classList.add('opacity-70','cursor-not-allowed');
         status.textContent = 'Submitting...';
 
-        // Build payload
         const body = {
           sessionId: document.getElementById('sessionId').value,
           fullName:  document.getElementById('fullName').value,
@@ -229,41 +226,19 @@
           extra:    document.getElementById('extra').value,
         };
 
-        // Step 1: ask server to verify Stripe session (no Admin needed)
-        let stripeVerified = false;
-        try {
-          const token = await user.getIdToken();
-          const resp = await fetch('/api/submit-intake', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ sessionId: body.sessionId })
-          });
-          const data = await resp.json();
-          if (resp.ok) stripeVerified = !!data.stripeVerified;
-        } catch (_) {}
+        const token = await user.getIdToken();
+        const resp = await fetch('/api/submit-intake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(body)
+        });
 
-        // Step 2: write to Firestore from the client
-        const doc = {
-          uid: user.uid,
-          email: user.email || '',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          sessionId: body.sessionId || '',
-          stripeVerified,
-          contact: { fullName: body.fullName, phone: body.phone },
-          address: body.address,
-          access: body.access,
-          area: body.area,
-          pets: body.pets,
-          notes: body.notes,
-          scheduling: { prefDay: body.prefDay, prefTime: body.prefTime },
-          extra: body.extra
-        };
-
-        await db.collection('intakes').add(doc);
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.error || 'Failed to submit intake');
 
         status.textContent = 'Thanks! Your intake has been received.';
         btn.textContent = 'Submitted';
-        // Optional: take them to the account page
+        // Optionally redirect after success:
         // window.location.href = '/account';
       } catch (err) {
         console.error(err);
