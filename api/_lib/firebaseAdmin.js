@@ -1,51 +1,49 @@
 // /api/_lib/firebaseAdmin.js
-// Robust Firebase Admin bootstrap for Node runtime (Vercel pages/api or app/api with runtime='nodejs')
+// Minimal, production-safe Admin init that ONLY reads FIREBASE_SERVICE_ACCOUNT.
+// No FIREBASE_PRIVATE_KEY or other vars are required.
+// Set FIREBASE_SERVICE_ACCOUNT to the FULL JSON from Firebase Console → Service accounts → "Generate new private key".
 import admin from 'firebase-admin';
 
-function resolveCredential() {
-  const svc = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (svc) {
-    try {
-      const parsed = JSON.parse(svc);
-      if (parsed.private_key) parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
-      return admin.credential.cert(parsed);
-    } catch (e) {
-      console.error('[AdminInit] Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:', e.message);
-    }
+function initAdmin() {
+  if (admin.apps.length) return;
+
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!raw) {
+    console.error('[AdminInit] Missing FIREBASE_SERVICE_ACCOUNT env var.');
+    return;
   }
 
-  const pid = process.env.FIREBASE_PROJECT_ID;
-  const email = process.env.FIREBASE_CLIENT_EMAIL;
-  let key = process.env.FIREBASE_PRIVATE_KEY;
-
-  if (pid && email && key) {
-    try {
-      key = key.replace(/\\n/g, '\n');
-      return admin.credential.cert({ project_id: pid, client_email: email, private_key: key });
-    } catch (e) {
-      console.error('[AdminInit] Failed to load 3-part Admin credential:', e.message);
-    }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    console.error('[AdminInit] FIREBASE_SERVICE_ACCOUNT is not valid JSON:', e.message);
+    return;
   }
 
-  console.error('[AdminInit] Credential not configured. hasSvc:', !!svc, 'hasProj:', !!pid, 'hasEmail:', !!email, 'hasKey:', !!key);
-  return null;
-}
+  if (parsed.private_key) {
+    // Convert literal \n sequences to real newlines (required on most hosts)
+    parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+  }
 
-if (!admin.apps.length) {
-  const cred = resolveCredential();
-  if (cred) {
-    try {
-      // Use explicit projectId when available to avoid emulator/project mismatch
-      const pid = process.env.FIREBASE_PROJECT_ID;
-      admin.initializeApp(pid ? { credential: cred, projectId: pid } : { credential: cred });
-      console.log('[AdminInit] Firebase Admin initialized (apps:', admin.apps.length, ')');
-    } catch (e) {
-      console.error('[AdminInit] initializeApp failed:', e.message);
-    }
+  if (!parsed.client_email || !parsed.private_key) {
+    console.error('[AdminInit] FIREBASE_SERVICE_ACCOUNT JSON is missing client_email or private_key.');
+    return;
+  }
+
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(parsed),
+      projectId: parsed.project_id || process.env.FIREBASE_PROJECT_ID
+    });
+    console.log('[AdminInit] Firebase Admin initialized.');
+  } catch (e) {
+    console.error('[AdminInit] initializeApp failed:', e.message);
   }
 }
 
-// Expose real SDKs when initialized; otherwise, throw cleanly on use.
+initAdmin();
+
 export const auth = admin.apps.length
   ? admin.auth()
   : { verifyIdToken: async () => { throw new Error('Firebase Admin not initialized'); } };
