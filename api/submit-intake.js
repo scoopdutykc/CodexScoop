@@ -1,11 +1,10 @@
 // /api/submit-intake.js
-//
-// Stores the intake on Stripe (Session + Customer metadata).
-// -> No Firestore, no Firebase Admin required.
+// Save the intake answers onto the Stripe Checkout Session + Customer metadata.
+// -> No Firestore. No Firebase Admin. No extra envs beyond STRIPE_SECRET_KEY.
 
 import Stripe from 'stripe';
 
-/** Minimal Base64URL JSON decode (for local ID token claims check) */
+/** Minimal Base64URL decode to read Firebase ID token claims locally */
 function b64urlJson(b64) {
   const pad = s => s + '==='.slice((s.length + 3) % 4);
   const s = b64.replace(/-/g, '+').replace(/_/g, '/');
@@ -29,65 +28,74 @@ export default async function handler(req, res) {
   try {
     if (!stripe) return res.status(500).json({ error: 'Missing STRIPE_SECRET_KEY' });
 
+    // Verify the Firebase ID token locally (no Admin dependency)
     const idToken = (req.headers.authorization || '').replace('Bearer ', '').trim();
     if (!idToken) return res.status(401).json({ error: 'Missing Firebase auth token' });
 
-    let claims;
+    let user;
     try {
-      // Local verification only — we just need uid/email to tag metadata.
-      claims = verifyLocally(idToken);
+      user = verifyLocally(idToken);
     } catch (e) {
-      return res.status(401).json({ error: `Invalid auth token: ${e?.message || e}` });
+      return res.status(401).json({ error: `Auth error: ${e?.message || e}` });
     }
 
     const {
-      sessionId,
-      fullName, phone, address = {}, access, area,
+      sessionId, fullName, phone, address, access, area,
       pets, notes, prefDay, prefTime, extra
     } = req.body || {};
 
     if (!sessionId) {
-      return res.status(400).json({ error: 'Missing required sessionId' });
+      return res.status(400).json({ error: 'Missing Stripe sessionId' });
     }
 
-    // Retrieve the session (must exist)
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // Fetch the Checkout Session to get the Customer
+    const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['customer'] });
+    if (!session) return res.status(404).json({ error: 'Stripe session not found' });
 
-    // Build compact metadata (Stripe metadata is string->string, 500 chars max per value)
-    const meta = {
-      intake_uid: claims.uid,
-      intake_email: claims.email || '',
-      intake_full_name: (fullName || '').slice(0, 500),
-      intake_phone: (phone || '').slice(0, 500),
-      intake_addr1: (address.line1 || '').slice(0, 500),
-      intake_addr2: (address.line2 || '').slice(0, 500),
-      intake_city: (address.city || '').slice(0, 500),
-      intake_state: (address.state || '').slice(0, 500),
-      intake_zip: (address.zip || '').slice(0, 500),
-      intake_access: (access || '').slice(0, 500),
-      intake_area: (area || '').slice(0, 500),
-      intake_pets: (pets || '').slice(0, 500),
-      intake_notes: (notes || '').slice(0, 500),
-      intake_pref_day: (prefDay || '').slice(0, 500),
-      intake_pref_time: (prefTime || '').slice(0, 500),
-      intake_extra: (extra || '').slice(0, 500),
-      intake_source: 'website-intake'
+    const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+    if (!customerId) return res.status(400).json({ error: 'No Stripe customer on session' });
+
+    // Compose a compact intake payload for metadata (JSON-stringified)
+    const intake = {
+      uid: user.uid,
+      email: user.email || '',
+      fullName: fullName || '',
+      phone: phone || '',
+      address: {
+        line1: address?.line1 || '',
+        line2: address?.line2 || '',
+        city: address?.city || '',
+        state: address?.state || '',
+        zip: address?.zip || '',
+      },
+      access: access || '',
+      area: area || '',
+      pets: pets || '',
+      notes: notes || '',
+      prefDay: prefDay || '',
+      prefTime: prefTime || '',
+      extra: extra || '',
+      submittedAt: new Date().toISOString(),
     };
 
-    // 1) Update the Checkout Session metadata
-    await stripe.checkout.sessions.update(sessionId, { metadata: meta });
+    // Save on the session (for immediate visibility)…
+    await stripe.checkout.sessions.update(sessionId, {
+      metadata: {
+        ...(session.metadata || {}),
+        intake_json: JSON.stringify(intake).slice(0, 5000) // metadata value limit
+      }
+    });
 
-    // 2) Also attach to the Customer (so it’s visible on the customer record)
-    if (session.customer) {
-      // Merge with any existing metadata so nothing is lost
-      const cust = await stripe.customers.retrieve(session.customer);
-      const existing = (cust && cust.metadata) ? cust.metadata : {};
-      await stripe.customers.update(session.customer, {
-        metadata: { ...existing, ...meta }
-      });
-    }
+    // …and also on the Customer for long-term access in the dashboard
+    const currentCustomerMeta = (typeof session.customer === 'object' && session.customer?.metadata) || {};
+    await stripe.customers.update(customerId, {
+      metadata: {
+        ...currentCustomerMeta,
+        last_intake_json: JSON.stringify(intake).slice(0, 5000)
+      }
+    });
 
-    return res.status(200).json({ ok: true, stored: 'stripe', sessionId });
+    return res.status(200).json({ ok: true, customerId, savedOn: ['session', 'customer'] });
   } catch (err) {
     console.error('submit-intake error:', err);
     return res.status(500).json({ error: err?.message || 'Internal error' });
