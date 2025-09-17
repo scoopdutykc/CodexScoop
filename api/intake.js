@@ -1,68 +1,44 @@
 // /api/intake.js
-// Forces Node runtime so firebase-admin can run on Vercel
+// Force Node runtime (Admin SDK is not compatible with Edge)
 export const config = { runtime: 'nodejs' };
 
-import { auth } from './_lib/firebaseAdmin.js';
-
-// Optional Firestore instance without changing your firebaseAdmin.js file
-let db = null;
-(async () => {
-  try {
-    const admin = (await import('firebase-admin')).default;
-    if (admin.apps.length) {
-      db = admin.firestore();
-    }
-  } catch (_) {
-    // ignore: if firestore isn't available we still accept the submission
-  }
-})();
+import { auth, db } from './_lib/firebaseAdmin.js';
+import admin from 'firebase-admin';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Make sure firebase-admin actually initialized (envs present)
   try {
-    // This will throw if our shim is active (not initialized)
-    await auth.getUser?.('nonexistent').catch(() => {});
-  } catch (e) {
-    return res
-      .status(500)
-      .json({ error: 'Firebase Admin not initialized on server' });
-  }
+    // 1) Extract and verify Firebase ID token
+    const authz = req.headers.authorization || '';
+    const token = authz.startsWith('Bearer ') ? authz.slice(7) : '';
+    if (!token) return res.status(401).json({ error: 'Missing Authorization: Bearer <idToken>' });
 
-  // Verify Firebase ID token from the browser
-  const idToken = (req.headers.authorization || '').replace('Bearer ', '').trim();
-  if (!idToken) {
-    return res.status(401).json({ error: 'Missing Firebase auth token' });
-  }
-
-  let decoded;
-  try {
-    decoded = await auth.verifyIdToken(idToken);
-  } catch (e) {
-    return res.status(401).json({ error: `Firebase auth error: ${e?.message || e}` });
-  }
-
-  const payload = req.body || {};
-
-  // Best-effort Firestore write (optional)
-  let docId = null;
-  if (db) {
+    let decoded;
     try {
-      const admin = (await import('firebase-admin')).default;
-      const ref = await db.collection('intake_submissions').add({
+      decoded = await auth.verifyIdToken(token);
+    } catch (e) {
+      return res.status(401).json({ error: `Firebase auth error: ${e.message}` });
+    }
+
+    // 2) Persist the exact fields from the client payload (no question changes)
+    const payload = req.body || {};
+
+    // 3) Write to Firestore
+    try {
+      await db.collection('intake_submissions').add({
         ...payload,
         uid: decoded.uid,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      docId = ref.id;
     } catch (e) {
-      // Don’t fail the request just because Firestore write failed
-      console.error('Intake Firestore write failed:', e);
+      // Log but still succeed (don't block UX if Firestore hiccups)
+      console.error('[intake] Firestore write failed:', e.message);
     }
-  }
 
-  return res.status(200).json({ ok: true, docId });
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error('[intake] Unexpected error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 }
