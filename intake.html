@@ -4,20 +4,21 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Scoop Duty KC — Service Intake</title>
+
+  <!-- Tailwind / AOS / Feather -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
   <script src="https://unpkg.com/feather-icons"></script>
 
-  <!-- Firebase Web SDK (auth only) -->
+  <!-- Firebase Web SDK (auth only, compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
 
   <style>
-    .card { box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1) }
+    .card { transition: transform .2s ease }
     .card:hover { transform: translateY(-3px) }
-    .req:after { content:" *"; color: #dc2626; }
+    .req:after { content: " *"; color: #dc2626; }
   </style>
 </head>
 <body class="font-sans bg-gray-50">
@@ -30,119 +31,143 @@
         </a>
         <div class="hidden md:flex space-x-3">
           <a href="/billing" class="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200 transition font-medium">Billing</a>
-          <button id="loginBtn" class="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition font-medium">Login</button>
-          <button id="signupBtn" class="px-4 py-2 rounded-md bg-green-800 text-white hover:bg-green-900 transition font-medium">Sign Up</button>
+          <button id="loginBtn" class="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition">Log in</button>
+          <button id="logoutBtn" class="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200 transition hidden">Log out</button>
         </div>
-        <button class="md:hidden focus:outline-none"><i data-feather="menu"></i></button>
       </div>
     </div>
   </nav>
 
   <!-- Header -->
-  <header class="bg-green-600 text-white">
-    <div class="container mx-auto px-6 py-12">
-      <h1 class="text-3xl md:text-4xl font-bold" data-aos="fade-up">New Service Intake</h1>
-      <p class="mt-2 text-green-100" data-aos="fade-up" data-aos-delay="100">
-        Tell us a bit about your home and pets so we can get you scheduled.
-      </p>
+  <header class="bg-green-50">
+    <div class="container mx-auto px-6 py-10">
+      <h1 class="text-3xl md:text-4xl font-extrabold text-green-800 mb-2">Service Intake</h1>
+      <p class="text-gray-700">Tell us about your yard and preferences so we can get you scooped on schedule.</p>
     </div>
   </header>
 
   <!-- Form -->
-  <section class="py-12">
-    <div class="container mx-auto px-6 max-w-3xl">
-      <form id="intakeForm" class="bg-white rounded-xl p-6 md:p-8 card transition" data-aos="fade-up">
-        <!-- Hidden fields we pass along -->
-        <input type="hidden" id="sessionId" name="sessionId"/>
+  <main class="container mx-auto px-6 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <section class="lg:col-span-2">
+        <form id="intakeForm" class="bg-white rounded-2xl shadow card p-6 space-y-6" data-aos="fade-up" novalidate>
+          <!-- Hidden: Stripe Session (if present in URL) -->
+          <input type="hidden" id="sessionId" />
 
-        <!-- Contact -->
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Contact</h2>
-        <div class="grid md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-gray-700 font-medium mb-1 req">Full name</label>
-            <input id="fullName" name="fullName" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Jane Doe"/>
-          </div>
-          <div>
-            <label class="block text-gray-700 font-medium mb-1 req">Phone</label>
-            <input id="phone" name="phone" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="(555) 555-5555"/>
-          </div>
-        </div>
-
-        <div class="mt-6">
-          <label class="block text-gray-700 font-medium mb-1 req">Service Address</label>
-          <div class="grid md:grid-cols-2 gap-4">
-            <input id="addr1" name="addr1" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Address line 1"/>
-            <input id="addr2" name="addr2" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Address line 2 (optional)"/>
-            <input id="city" name="city" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="City"/>
-            <div class="grid grid-cols-2 gap-4">
-              <input id="state" name="state" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="State"/>
-              <input id="zip" name="zip" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="ZIP"/>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="fullName" class="block text-sm font-medium text-gray-700 req">Full Name</label>
+              <input id="fullName" type="text" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" required />
+            </div>
+            <div>
+              <label for="phone" class="block text-sm font-medium text-gray-700 req">Phone</label>
+              <input id="phone" type="tel" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" required />
             </div>
           </div>
-        </div>
 
-        <!-- Access & Pets -->
-        <h2 class="text-xl font-bold text-gray-800 mt-10 mb-4">Access & Pets</h2>
-        <div class="grid md:grid-cols-2 gap-4">
-          <div class="md:col-span-2">
-            <label class="block text-gray-700 font-medium mb-1">Gate code / Access notes</label>
-            <input id="access" name="access" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Gate code, lockbox location, etc."/>
-          </div>
           <div>
-            <label class="block text-gray-700 font-medium mb-1 req">Front Yard, Backyard, or Both?</label>
-            <select id="area" name="area" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-              <option value="">Select one</option>
-              <option>Front Yard</option>
-              <option>Backyard</option>
-              <option>Both</option>
-            </select>
+            <label class="block text-sm font-medium text-gray-700 req">Street Address</label>
+            <input id="addr1" type="text" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" required />
           </div>
-          <div>
-            <label class="block text-gray-700 font-medium mb-1">Pet name(s)</label>
-            <input id="pets" name="pets" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Rex, Bella, Luna"/>
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-gray-700 font-medium mb-1">Yard / special notes</label>
-            <textarea id="notes" name="notes" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Sprinklers, hazards, where waste can be found, etc."></textarea>
-          </div>
-        </div>
 
-        <!-- Scheduling -->
-        <h2 class="text-xl font-bold text-gray-800 mt-10 mb-4">Scheduling Preference</h2>
-        <div class="grid md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-gray-700 font-medium mb-1">Preferred day (e.g., Tuesdays)</label>
-            <input id="prefDay" name="prefDay" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="Tuesdays"/>
+            <label class="block text-sm font-medium text-gray-700">Address Line 2</label>
+            <input id="addr2" type="text" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" />
           </div>
-          <div>
-            <label class="block text-gray-700 font-medium mb-1">Preferred time window (e.g., 1–3 PM)</label>
-            <input id="prefTime" name="prefTime" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="1–3 PM"/>
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-gray-700 font-medium mb-1">Anything else we should know?</label>
-            <textarea id="extra" name="extra" rows="3" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"></textarea>
-          </div>
-        </div>
 
-        <!-- Submit -->
-        <div class="mt-8 flex items-center gap-4">
-          <button id="submitBtn" type="submit" class="bg-green-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-green-700 transition">
-            Submit Intake
-          </button>
-          <span id="status" class="text-sm text-gray-500"></span>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label for="city" class="block text-sm font-medium text-gray-700 req">City</label>
+              <input id="city" type="text" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" required />
+            </div>
+            <div>
+              <label for="state" class="block text-sm font-medium text-gray-700 req">State</label>
+              <input id="state" type="text" maxlength="2" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500 uppercase" required />
+            </div>
+            <div>
+              <label for="zip" class="block text-sm font-medium text-gray-700 req">ZIP</label>
+              <input id="zip" type="text" inputmode="numeric" pattern="[0-9]*" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" required />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="area" class="block text-sm font-medium text-gray-700 req">Yard Area</label>
+              <select id="area" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" required>
+                <option value="">Select one</option>
+                <option value="small">&lt; 1/8 acre</option>
+                <option value="medium">1/8 – 1/4 acre</option>
+                <option value="large">&gt; 1/4 acre</option>
+              </select>
+            </div>
+            <div>
+              <label for="pets" class="block text-sm font-medium text-gray-700 req"># of Dogs</label>
+              <input id="pets" type="number" min="1" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" required />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="prefDay" class="block text-sm font-medium text-gray-700">Preferred Day</label>
+              <input id="prefDay" type="text" placeholder="e.g., Tuesdays" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" />
+            </div>
+            <div>
+              <label for="prefTime" class="block text-sm font-medium text-gray-700">Preferred Time</label>
+              <input id="prefTime" type="text" placeholder="e.g., mornings" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" />
+            </div>
+          </div>
+
+          <div>
+            <label for="access" class="block text-sm font-medium text-gray-700">Gate/Access Info</label>
+            <input id="access" type="text" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" />
+          </div>
+
+          <div>
+            <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
+            <textarea id="notes" rows="3" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500"></textarea>
+          </div>
+
+          <div>
+            <label for="extra" class="block text-sm font-medium text-gray-700">Extras (add-ons)</label>
+            <textarea id="extra" rows="2" class="mt-1 w-full rounded-md border-gray-300 focus:border-green-500 focus:ring-green-500" placeholder="e.g., deodorizer, patio sweep, etc."></textarea>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <p id="status" class="text-sm text-gray-600"></p>
+            <button id="submitBtn" type="submit" class="px-6 py-3 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition">
+              Submit Intake
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="space-y-4">
+        <div class="bg-white rounded-2xl shadow card p-5" data-aos="fade-left">
+          <h3 class="text-lg font-semibold text-gray-800 mb-2">What happens next?</h3>
+          <ul class="text-sm text-gray-700 list-disc pl-5 space-y-1">
+            <li>We review your intake and confirm schedule.</li>
+            <li>Your tech will text before arrival if requested.</li>
+            <li>You can update preferences any time in your account.</li>
+          </ul>
         </div>
-      </form>
+        <div class="bg-white rounded-2xl shadow card p-5" data-aos="fade-left" data-aos-delay="100">
+          <h3 class="text-lg font-semibold text-gray-800 mb-2">Questions?</h3>
+          <p class="text-sm text-gray-700">Email support@scoopdutykc.com</p>
+        </div>
+      </aside>
     </div>
-  </section>
+  </main>
 
-  <footer class="bg-gray-800 text-white py-10">
-    <div class="container mx-auto px-6 text-center text-gray-400">
-      &copy; 2025 Scoop Duty KC. All rights reserved.
+  <!-- Footer -->
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-sm text-gray-500">
+      © <span id="year"></span> Scoop Duty KC. All rights reserved.
     </div>
   </footer>
 
   <script>
-    // Firebase init (auth only)
+    // Firebase init (auth only) — keep your existing project values
     const firebaseConfig = {
       apiKey: "AIzaSyBiCaBDOOql_0MO1KRWaATh-ATc60TutMw",
       authDomain: "scoop-duty.firebaseapp.com",
@@ -156,96 +181,90 @@
 
     AOS.init({ duration: 800, easing: 'ease-in-out', once: true });
     feather.replace();
+    document.getElementById('year').textContent = new Date().getFullYear();
 
-    // Nav login/signup behavior
+    // Simple auth-aware nav
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    loginBtn.addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()));
+    logoutBtn.addEventListener('click', () => auth.signOut());
     auth.onAuthStateChanged((user) => {
-      const loginBtn = document.getElementById('loginBtn');
-      const signupBtn = document.getElementById('signupBtn');
-      if (user) {
-        if (loginBtn) loginBtn.textContent = 'Account';
-        if (signupBtn) signupBtn.textContent = 'Logout';
-        if (user.displayName) document.getElementById('fullName').value = user.displayName;
-      } else {
-        if (loginBtn) loginBtn.textContent = 'Login';
-        if (signupBtn) signupBtn.textContent = 'Sign Up';
-      }
+      if (user) { loginBtn.classList.add('hidden'); logoutBtn.classList.remove('hidden'); }
+      else { loginBtn.classList.remove('hidden'); logoutBtn.classList.add('hidden'); }
     });
 
-    document.getElementById('loginBtn').addEventListener('click', () => {
-      if (auth.currentUser) {
-        window.location.href = '/account';
-      } else {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).catch(err => alert('Login error: ' + (err?.message || err)));
-      }
-    });
-    document.getElementById('signupBtn').addEventListener('click', () => {
-      if (auth.currentUser) {
-        auth.signOut();
-      } else {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).catch(err => alert('Signup error: ' + (err?.message || err)));
-      }
-    });
+    // Grab Stripe session id from URL (if present) for your records
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id') || params.get('sessionId') || '';
+    if (sessionId) document.getElementById('sessionId').value = sessionId;
 
-    // Capture Stripe session_id from redirect
-    const params = new URLSearchParams(location.search);
-    const sessionId = params.get('session_id') || '';
-    document.getElementById('sessionId').value = sessionId;
+    // Submit handler — POSTS to /api/intake so Firestore actually saves it
+    const form = document.getElementById('intakeForm');
+    const status = document.getElementById('status');
+    const btn = document.getElementById('submitBtn');
 
-    // Submit -> POST to server (server writes to Firestore via Admin)
-    document.getElementById('intakeForm').addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const status = document.getElementById('status');
-      const btn = document.getElementById('submitBtn');
-
       try {
         const user = auth.currentUser;
-        if (!user) { alert('Please sign in first.'); return; }
+        if (!user) {
+          alert('Please log in before submitting your intake.');
+          return;
+        }
 
-        btn.disabled = true; btn.classList.add('opacity-70','cursor-not-allowed');
+        btn.disabled = true;
+        btn.classList.add('opacity-70','cursor-not-allowed');
         status.textContent = 'Submitting...';
 
         const body = {
-          sessionId: document.getElementById('sessionId').value,
-          fullName:  document.getElementById('fullName').value,
-          phone:     document.getElementById('phone').value,
-          address: {
-            line1: document.getElementById('addr1').value,
-            line2: document.getElementById('addr2').value,
-            city:  document.getElementById('city').value,
-            state: document.getElementById('state').value,
-            zip:   document.getElementById('zip').value,
-          },
-          access:   document.getElementById('access').value,
-          area:     document.getElementById('area').value,
-          pets:     document.getElementById('pets').value,
-          notes:    document.getElementById('notes').value,
-          prefDay:  document.getElementById('prefDay').value,
-          prefTime: document.getElementById('prefTime').value,
-          extra:    document.getElementById('extra').value,
+          sessionId: document.getElementById('sessionId').value.trim(),
+          fullName:  document.getElementById('fullName').value.trim(),
+          phone:     document.getElementById('phone').value.trim(),
+          addr1:     document.getElementById('addr1').value.trim(),
+          addr2:     document.getElementById('addr2').value.trim(),
+          city:      document.getElementById('city').value.trim(),
+          state:     document.getElementById('state').value.trim(),
+          zip:       document.getElementById('zip').value.trim(),
+          area:      document.getElementById('area').value,
+          access:    document.getElementById('access').value.trim(),
+          pets:      document.getElementById('pets').value,
+          notes:     document.getElementById('notes').value.trim(),
+          prefDay:   document.getElementById('prefDay').value.trim(),
+          prefTime:  document.getElementById('prefTime').value.trim(),
+          extra:     document.getElementById('extra').value.trim(),
         };
 
+        // Basic front-end validation (keeps your UX safe)
+        if (!body.fullName || !body.phone || !body.addr1 || !body.city || !body.state || !body.zip || !body.area || !body.pets) {
+          throw new Error('Please complete all required fields.');
+        }
+
         const token = await user.getIdToken();
-        const resp = await fetch('/api/submit-intake', {
+
+        // 🔁 Key fix: point to /api/intake (server writes to Firestore)
+        const resp = await fetch('/api/intake', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
           body: JSON.stringify(body)
         });
 
-        const data = await resp.json();
+        const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data?.error || 'Failed to submit intake');
 
         status.textContent = 'Thanks! Your intake has been received.';
         btn.textContent = 'Submitted';
-        // Optionally redirect after success:
+        // Optional redirect after success:
         // window.location.href = '/account';
       } catch (err) {
         console.error(err);
         alert('Intake error: ' + (err?.message || err));
         status.textContent = '';
       } finally {
-        btn.disabled = false; btn.classList.remove('opacity-70','cursor-not-allowed');
+        btn.disabled = false;
+        btn.classList.remove('opacity-70','cursor-not-allowed');
       }
     });
   </script>
