@@ -9,8 +9,12 @@
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
   <script src="https://unpkg.com/feather-icons"></script>
+
+  <!-- Firebase Web SDK (compat like your site) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+
   <style>
     .card { box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1) }
     .card:hover { transform: translateY(-3px) }
@@ -139,7 +143,7 @@
   </footer>
 
   <script>
-    // Match your site's Firebase init (same literals you already use)
+    // Firebase init (same literals you already use)
     const firebaseConfig = {
       apiKey: "AIzaSyBiCaBDOOql_0MO1KRWaATh-ATc60TutMw",
       authDomain: "scoop-duty.firebaseapp.com",
@@ -150,18 +154,18 @@
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const db   = firebase.firestore();
 
     AOS.init({ duration: 800, easing: 'ease-in-out', once: true });
     feather.replace();
 
-    // Nav login/signup behavior (same as index)
+    // Nav login/signup behavior
     auth.onAuthStateChanged((user) => {
       const loginBtn = document.getElementById('loginBtn');
       const signupBtn = document.getElementById('signupBtn');
       if (user) {
         if (loginBtn) loginBtn.textContent = 'Account';
         if (signupBtn) signupBtn.textContent = 'Logout';
-        // Prefill
         if (user.displayName) document.getElementById('fullName').value = user.displayName;
       } else {
         if (loginBtn) loginBtn.textContent = 'Login';
@@ -191,7 +195,7 @@
     const sessionId = params.get('session_id') || '';
     document.getElementById('sessionId').value = sessionId;
 
-    // Submit handler -> POST /api/submit-intake
+    // Submit -> (1) server verifies Stripe (optional) (2) client writes to Firestore
     document.getElementById('intakeForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const status = document.getElementById('status');
@@ -200,9 +204,11 @@
       try {
         const user = auth.currentUser;
         if (!user) { alert('Please sign in first.'); return; }
-        btn.disabled = true; btn.classList.add('opacity-70', 'cursor-not-allowed');
+
+        btn.disabled = true; btn.classList.add('opacity-70','cursor-not-allowed');
         status.textContent = 'Submitting...';
 
+        // Build payload
         const body = {
           sessionId: document.getElementById('sessionId').value,
           fullName:  document.getElementById('fullName').value,
@@ -223,24 +229,48 @@
           extra:    document.getElementById('extra').value,
         };
 
-        const token = await user.getIdToken();
-        const resp = await fetch('/api/submit-intake', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify(body)
-        });
+        // Step 1: ask server to verify Stripe session (no Admin needed)
+        let stripeVerified = false;
+        try {
+          const token = await user.getIdToken();
+          const resp = await fetch('/api/submit-intake', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ sessionId: body.sessionId })
+          });
+          const data = await resp.json();
+          if (resp.ok) stripeVerified = !!data.stripeVerified;
+        } catch (_) {}
 
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data?.error || 'Failed to submit intake');
+        // Step 2: write to Firestore from the client
+        const doc = {
+          uid: user.uid,
+          email: user.email || '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          sessionId: body.sessionId || '',
+          stripeVerified,
+          contact: { fullName: body.fullName, phone: body.phone },
+          address: body.address,
+          access: body.access,
+          area: body.area,
+          pets: body.pets,
+          notes: body.notes,
+          scheduling: { prefDay: body.prefDay, prefTime: body.prefTime },
+          extra: body.extra
+        };
+
+        await db.collection('intakes').add(doc);
 
         status.textContent = 'Thanks! Your intake has been received.';
         btn.textContent = 'Submitted';
+        // Optional: take them to the account page
+        // window.location.href = '/account';
       } catch (err) {
         console.error(err);
         alert('Intake error: ' + (err?.message || err));
         status.textContent = '';
       } finally {
-        btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        btn.disabled = false; btn.classList.remove('opacity-70','cursor-not-allowed');
       }
     });
   </script>
