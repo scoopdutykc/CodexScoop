@@ -227,12 +227,7 @@
         };
 
         const token = await user.getIdToken();
-        const resp = await fetch('/api/intake', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify(body)
-        });
-
+        const resp = await fetch('/api/submit-intake', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify(body)
