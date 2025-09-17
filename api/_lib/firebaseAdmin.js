@@ -1,64 +1,55 @@
 // /api/_lib/firebaseAdmin.js
 import admin from 'firebase-admin';
 
-function getCredential() {
-  const svcJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (svcJson) {
+function buildCredential() {
+  // Highest priority: single JSON blob in FIREBASE_SERVICE_ACCOUNT
+  const svc = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (svc) {
     try {
-      const parsed = JSON.parse(svcJson);
+      const parsed = JSON.parse(svc);
       if (parsed.private_key) parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
       return admin.credential.cert(parsed);
     } catch (e) {
-      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:', e);
+      console.error('FIREBASE_SERVICE_ACCOUNT parse error:', e);
     }
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail =
-    process.env.FIREBASE_CLIENT_EMAIL ||
-    (svcJson ? (JSON.parse(svcJson).client_email) : undefined);
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  // Fallback: individual env vars
+  const projectId   = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  let privateKey    = process.env.FIREBASE_PRIVATE_KEY;
+
   if (privateKey) privateKey = privateKey.replace(/\\n/g, '\n');
 
   if (projectId && clientEmail && privateKey) {
-    return admin.credential.cert({
-      project_id: projectId,
-      client_email: clientEmail,
-      private_key: privateKey,
-    });
+    return admin.credential.cert({ project_id: projectId, client_email: clientEmail, private_key: privateKey });
   }
 
-  console.error(
-    'Firebase Admin credential not configured. Set FIREBASE_SERVICE_ACCOUNT or (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).'
-  );
   return null;
 }
 
-// Eager attempt (your original behavior)
+let app;
 if (!admin.apps.length) {
-  const cred = getCredential();
-  if (cred) {
-    admin.initializeApp({ credential: cred });
-  }
-}
-
-// Export the original `auth` (kept for compatibility)
-export const auth = admin.apps.length
-  ? admin.auth()
-  : {
-      verifyIdToken: async () => {
-        throw new Error('Firebase Admin not initialized');
-      },
-    };
-
-// NEW: Lazy getter — retries initialization at call time to avoid cold-start/env timing issues
-export function getAuth() {
-  if (admin.apps.length) return admin.auth();
-
-  const cred = getCredential();
+  const cred = buildCredential();
   if (!cred) {
-    throw new Error('Firebase Admin not initialized');
+    console.error(
+      'Firebase Admin credential not configured. Set FIREBASE_SERVICE_ACCOUNT or (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY).'
+    );
+  } else {
+    app = admin.initializeApp({
+      credential: cred,
+      projectId: process.env.FIREBASE_PROJECT_ID || undefined,
+    });
   }
-  admin.initializeApp({ credential: cred });
-  return admin.auth();
+} else {
+  app = admin.app();
 }
+
+// Export hard failures if not initialized so callers surface a clear message
+export const adminApp = app || null;
+export const auth = adminApp ? admin.auth() : {
+  verifyIdToken: async () => { throw new Error('Firebase Admin not initialized'); }
+};
+export const db   = adminApp ? admin.firestore() : {
+  collection: () => { throw new Error('Firebase Admin not initialized'); }
+};
