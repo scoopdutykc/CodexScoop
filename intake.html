@@ -234,10 +234,17 @@
         try {
           const token = await user.getIdToken();
           const resp = await fetch('/api/submit-intake', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ sessionId: body.sessionId })
-          });
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+  body: JSON.stringify(body)
+});
+
+let data;
+try { data = await resp.json(); } catch { data = null; }
+
+if (!resp.ok) {
+  throw new Error((data && data.error) || `HTTP ${resp.status}`);
+}
           const data = await resp.json();
           if (resp.ok) stripeVerified = !!data.stripeVerified;
         } catch (_) {}
