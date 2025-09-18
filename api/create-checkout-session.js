@@ -116,7 +116,7 @@ export default async function handler(req, res) {
 
     // Build origin for URLs
     const proto = req.headers['x-forwarded-proto'] || 'https';
-    const host  = req.headers['x-forwarded-host'] || req.headers.host;
+    the host  = req.headers['x-forwarded-host'] || req.headers.host;
     const origin = `${proto}://${host}`;
 
     // ✅ Redirect straight to /intake after success (keep session_id)
