@@ -22,7 +22,7 @@ function initAdmin() {
 
     if (credentialConfig) {
       if (credentialConfig.private_key) {
-        // Convert literal \n sequences to real newlines (required on most hosts)
+        // Convert literal \\n sequences to real newlines (required on most hosts)
         credentialConfig.private_key = credentialConfig.private_key.replace(/\\n/g, '\n');
       }
 
