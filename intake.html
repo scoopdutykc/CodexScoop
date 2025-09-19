@@ -227,14 +227,14 @@
         };
 
         const token = await user.getIdToken();
-        const resp = await fetch('/api/submit-intake', {
+        const resp = await fetch('/api/intake', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify(body)
         });
 
         const data = await resp.json();
-        if (!resp.ok) throw new Error(data?.error || 'Failed to submit intake');
+        if (!resp.ok || !data?.ok) throw new Error(data?.error || 'Failed to submit intake');
 
         status.textContent = 'Thanks! Your intake has been received.';
         btn.textContent = 'Submitted';
