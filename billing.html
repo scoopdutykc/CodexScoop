@@ -46,13 +46,17 @@
             Update payment methods, review invoices, and adjust your subscription whenever it fits your schedule. Our secure Stripe-powered customer portal keeps everything in one friendly place.
           </p>
           <div class="mt-8 flex flex-wrap items-center gap-4">
-            <a href="https://billing.stripe.com/p/login/test_9B6eVf3Xj0bc1rVaIT1gs00" target="_blank" rel="noopener noreferrer"
-               class="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white text-green-700 font-semibold shadow-lg hover:-translate-y-0.5 transition">
-              Open Customer Portal
+            <a
+              href="https://billing.stripe.com/p/login/test_9B6eVf3Xj0bc1rVaIT1gs00"
+              data-portal-button
+              class="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white text-green-700 font-semibold shadow-lg hover:-translate-y-0.5 transition"
+            >
+              <span>Open Customer Portal</span>
               <i data-feather="external-link" class="w-4 h-4"></i>
             </a>
             <span class="text-white/70">Securely hosted by Stripe</span>
           </div>
+          <p data-portal-status class="text-white/80 text-sm hidden mt-3"></p>
         </div>
       </div>
     </section>
@@ -130,9 +134,12 @@
                 <a href="tel:18165350896" class="hover:text-green-600">(816) 535-0896</a>
               </div>
             </div>
-            <a href="https://billing.stripe.com/p/login/test_9B6eVf3Xj0bc1rVaIT1gs00" target="_blank" rel="noopener noreferrer"
-               class="mt-8 inline-flex items-center gap-3 px-5 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition">
-              Launch Stripe Portal
+            <a
+              href="https://billing.stripe.com/p/login/test_9B6eVf3Xj0bc1rVaIT1gs00"
+              data-portal-button
+              class="mt-8 inline-flex items-center gap-3 px-5 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition"
+            >
+              <span>Launch Stripe Portal</span>
               <i data-feather="arrow-right" class="w-4 h-4"></i>
             </a>
           </div>
@@ -146,9 +153,12 @@
         <p class="mt-3 text-white/80 max-w-2xl mx-auto">
           The Scoop Duty billing portal lets you handle payments, review visits, and keep your pet care plan perfectly tuned—all in under a minute.
         </p>
-        <a href="https://billing.stripe.com/p/login/test_9B6eVf3Xj0bc1rVaIT1gs00" target="_blank" rel="noopener noreferrer"
-           class="mt-8 inline-flex items-center gap-3 px-8 py-3 rounded-full bg-white text-green-700 font-semibold shadow-lg hover:-translate-y-0.5 transition">
-          Go to Customer Portal
+        <a
+          href="https://billing.stripe.com/p/login/test_9B6eVf3Xj0bc1rVaIT1gs00"
+          data-portal-button
+          class="mt-8 inline-flex items-center gap-3 px-8 py-3 rounded-full bg-white text-green-700 font-semibold shadow-lg hover:-translate-y-0.5 transition"
+        >
+          <span>Go to Customer Portal</span>
           <i data-feather="external-link" class="w-4 h-4"></i>
         </a>
       </div>
@@ -162,6 +172,8 @@
   </footer>
 
   <script>
+    const portalShareUrl = 'https://billing.stripe.com/p/login/test_9B6eVf3Xj0bc1rVaIT1gs00';
+
     const firebaseConfig = {
       apiKey: "AIzaSyBiCaBDOOql_0MO1KRWaATh-ATc60TutMw",
       authDomain: "scoop-duty.firebaseapp.com",
@@ -212,6 +224,79 @@
         }
       });
     }
+
+    const portalButtons = Array.from(document.querySelectorAll('[data-portal-button]'));
+    const portalStatusEl = document.querySelector('[data-portal-status]');
+
+    function setPortalStatus(message) {
+      if (!portalStatusEl) return;
+      if (message) {
+        portalStatusEl.textContent = message;
+        portalStatusEl.classList.remove('hidden');
+      } else {
+        portalStatusEl.textContent = '';
+        portalStatusEl.classList.add('hidden');
+      }
+    }
+
+    function setPortalButtonLoading(btn, loading) {
+      if (!btn.dataset.originalHtml) {
+        btn.dataset.originalHtml = btn.innerHTML;
+      }
+      btn.dataset.loading = loading ? 'true' : 'false';
+      btn.setAttribute('aria-busy', loading ? 'true' : 'false');
+      btn.classList.toggle('opacity-70', loading);
+      btn.classList.toggle('pointer-events-none', loading);
+      if (loading) {
+        btn.innerHTML = '<span class="inline-flex items-center gap-2">Opening portal…</span>';
+      } else {
+        btn.innerHTML = btn.dataset.originalHtml;
+      }
+    }
+
+    async function handlePortalButton(event) {
+      const user = auth.currentUser;
+      if (!user) return; // fall back to the public Stripe link
+
+      event.preventDefault();
+      const btn = event.currentTarget;
+      if (btn.dataset.loading === 'true') return;
+
+      setPortalButtonLoading(btn, true);
+      setPortalStatus('Generating your secure customer portal…');
+      let redirecting = false;
+
+      try {
+        const idToken = await user.getIdToken();
+        const resp = await fetch('/api/create-portal-session', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({}),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.status === 401) await auth.signOut().catch(() => {});
+        if (!resp.ok || !data?.url) {
+          throw new Error(data?.error || 'Portal session response was invalid');
+        }
+        redirecting = true;
+        setPortalStatus('Redirecting you to Stripe…');
+        window.location.href = data.url;
+      } catch (err) {
+        console.error('Portal open error', err);
+        alert('We could not open your customer portal automatically. You will be sent to the standard Stripe login instead.');
+        window.location.href = portalShareUrl;
+      } finally {
+        if (!redirecting) {
+          setPortalStatus('');
+          setPortalButtonLoading(btn, false);
+        }
+      }
+    }
+
+    portalButtons.forEach((btn) => btn.addEventListener('click', handlePortalButton));
   </script>
 </body>
 </html>
