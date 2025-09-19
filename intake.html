@@ -198,12 +198,14 @@
       e.preventDefault();
       const status = document.getElementById('status');
       const btn = document.getElementById('submitBtn');
+      let redirecting = false;
 
       try {
         const user = auth.currentUser;
         if (!user) { alert('Please sign in first.'); return; }
 
-        btn.disabled = true; btn.classList.add('opacity-70','cursor-not-allowed');
+        btn.disabled = true;
+        btn.classList.add('opacity-70','cursor-not-allowed');
         status.textContent = 'Submitting...';
 
         const body = {
@@ -236,16 +238,25 @@
         const data = await resp.json();
         if (!resp.ok || !data?.ok) throw new Error(data?.error || 'Failed to submit intake');
 
-        status.textContent = 'Thanks! Your intake has been received.';
+        status.textContent = 'Thanks! Redirecting you to billing...';
         btn.textContent = 'Submitted';
-        // Optionally redirect after success:
-        // window.location.href = '/account';
+        redirecting = true;
+
+        setTimeout(() => {
+          window.location.href = '/billing';
+        }, 1200);
       } catch (err) {
         console.error(err);
         alert('Intake error: ' + (err?.message || err));
         status.textContent = '';
       } finally {
-        btn.disabled = false; btn.classList.remove('opacity-70','cursor-not-allowed');
+        if (!redirecting) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-70','cursor-not-allowed');
+        } else {
+          btn.disabled = true;
+          btn.classList.add('opacity-70','cursor-not-allowed');
+        }
       }
     });
   </script>
