@@ -31,7 +31,9 @@ export default async function handler(req, res) {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      console.error('[intake] Firestore write failed:', e.message);
+      const message = e?.message || 'Firestore write failed';
+      console.error('[intake] Firestore write failed:', e);
+      return res.status(500).json({ error: `Firestore write failed: ${message}` });
     }
 
     return res.status(200).json({ ok: true });
