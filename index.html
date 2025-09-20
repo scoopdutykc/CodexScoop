@@ -24,7 +24,7 @@
           Scoop Duty <span class="text-green-800">KC</span>
         </div>
         <div class="hidden md:flex space-x-3">
-          <a href="/billing" class="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200 transition font-medium">
+          <a id="navBilling" href="/billing" class="hidden px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200 transition font-medium">
             Billing
           </a>
           <button id="loginBtn" class="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition font-medium">
@@ -314,7 +314,7 @@
       const loginBtn = document.getElementById('loginBtn');
       const signupBtn = document.getElementById('signupBtn');
       if (user) {
-        if (loginBtn) loginBtn.textContent = 'Account';
+        if (loginBtn) loginBtn.textContent = 'Billing';
         if (signupBtn) signupBtn.textContent = 'Logout';
         await createStripeCustomer(user);
       } else {
@@ -325,7 +325,7 @@
 
     document.getElementById('loginBtn').addEventListener('click', () => {
       if (auth.currentUser) {
-        window.location.href = '/account';
+        window.location.href = '/billing';
       } else {
         const provider = new firebase.auth.GoogleAuthProvider();
         auth.signInWithPopup(provider)
