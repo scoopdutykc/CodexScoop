@@ -40,7 +40,7 @@
   </nav>
 
   <section class="relative">
-    <img src="https://www.scoop-duty.com/images/hero-yard.jpg" alt="Clean backyard ready for pets" class="w-full h-[70vh] object-cover">
+    <img src="images/hero.jpg" alt="Clean backyard ready for pets" class="w-full h-[70vh] object-cover">
   </section>
 
   <section id="services" class="py-20 bg-white">
@@ -644,7 +644,7 @@
       "once weekly, 1 dog, small yard":      "price_1S4FGARzSCSZiE1RcXQ5NV2K"
     };
 
-    function isOneTimeKey(k) { return /^onetime\\s/i.test(k); }
+    function isOneTimeKey(k) { return /^onetime\s/i.test(k); }
 
     // === ONLY CHANGE: make goToCheckout show the actual server error ===
     async function goToCheckout(priceId, service, optionsKey) {
